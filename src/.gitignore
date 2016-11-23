@@ -1,4 +1,1 @@
-*.swp
-*.log
-__pycache__/
 config.cfg
