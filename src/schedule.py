@@ -88,6 +88,8 @@ if __name__ == '__main__':
             kw['filename'] = sys.argv[3]
         logging.basicConfig(**kw)
 
+        logger.info('Start mkschedule')
         mkschedule(ics_dir=sys.argv[1], img_dir=sys.argv[2])
+        logger.info('End mkschedule')
     else:
         print('Usage: {} ICS_DIR IMG_DIR [LOG_FILE]'.format(sys.argv[0]))
