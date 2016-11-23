@@ -1,0 +1,14 @@
+[core]
+company = Port Olisar Web Services
+website = http://www.portolisar.com
+schedule_url = https://robertsspaceindustries.com/schedule-report
+
+[ocr]
+api_key = <your key>
+
+[ical]
+name = RSI Schedule
+uid_domain = portolisar.com
+# the following is in hours
+event_start = 12
+event_duration = 2
