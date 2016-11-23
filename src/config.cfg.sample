@@ -2,6 +2,7 @@
 company = Port Olisar Web Services
 website = http://www.portolisar.com
 schedule_url = https://robertsspaceindustries.com/schedule-report
+logging_format = %%(asctime)s %%(name)s.%%(funcName)s +%%(lineno)s: %%(levelname)-8s [%%(process)d] %%(message)s
 
 [ocr]
 api_key = <your key>

@@ -11,13 +11,12 @@ from crawler import get_images
 from image import get_blocks
 from ocr import get_text
 from ical import create_ics
+from config import *
 
 
 __all__ = ['mkschedule']
 
 
-logging.basicConfig(level=logging.INFO,
-    format='%(asctime)s %(name)s.%(funcName)s +%(lineno)s: %(levelname)-8s [%(process)d] %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -82,7 +81,13 @@ def mkschedule(ics_dir='', img_dir=''):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 3:
+    argc = len(sys.argv)
+    if argc >= 3:
+        kw = {'level': logging.INFO, 'format': CORE['logging_format']}
+        if argc >= 4:
+            kw['filename'] = sys.argv[3]
+        logging.basicConfig(**kw)
+
         mkschedule(ics_dir=sys.argv[1], img_dir=sys.argv[2])
     else:
-        print('Usage: {} ICS_DIR IMG_DIR'.format(sys.argv[0]))
+        print('Usage: {} ICS_DIR IMG_DIR [LOG_FILE]'.format(sys.argv[0]))
