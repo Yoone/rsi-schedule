@@ -1,4 +1,5 @@
 [core]
+#activate_env = /path/to/activate_this.py
 company = Port Olisar Web Services
 website = http://www.portolisar.com
 schedule_url = https://robertsspaceindustries.com/schedule-report

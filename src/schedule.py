@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+from config import *
+_activate_env = CORE.get('activate_env')
+if _activate_env is not None:
+    exec(compile(open(_activate_env, 'rb').read(), _activate_env, 'exec'), dict(__file__=_activate_env))
+
 import sys
 import os
 from io import BytesIO
@@ -11,7 +16,6 @@ from crawler import get_images
 from image import get_blocks
 from ocr import get_text
 from ical import create_ics
-from config import *
 
 
 __all__ = ['mkschedule']
