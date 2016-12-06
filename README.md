@@ -8,7 +8,7 @@ Cloud Imperium Games released their weekly-updated internal development schedule
 
 This project consists in crawling images from the public schedule web page, splitting them into blocks (representing tasks with their names and start/end dates) and feeding these blocks to an OCR in order to use the output text to generate an iCalendar file (RFC 5545).
 
-Generated calendar can be accessed at: http://www.portolisar.com/
+Instructions for using the generated calendar are available at: https://www.portolisar.com/
 
 Requirements
 ------------
