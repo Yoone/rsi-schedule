@@ -1,99 +1,123 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-from config import *
-_activate_env = CORE.get('activate_env')
-if _activate_env is not None:
-    exec(compile(open(_activate_env, 'rb').read(), _activate_env, 'exec'), dict(__file__=_activate_env))
-
-import sys
-import os
-from io import BytesIO
 from configparser import ConfigParser
-import hashlib
+from datetime import datetime, timedelta
 import logging
+import os
 
-from crawler import get_images
-from image import get_blocks
-from ocr import get_text
-from ical import create_ics
-
-
-__all__ = ['mkschedule']
+from ics import Calendar, Event
+import requests
 
 
 logger = logging.getLogger(__name__)
+config = ConfigParser()
 
 
-def md5file(fname):
-    hash_md5 = hashlib.md5()
-    with open(fname, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+def load_config(config_file):
+    config.read(os.path.join(os.path.dirname(__file__), config_file))
 
 
-def update_image_data(meta):
-    ini_file = os.path.splitext(meta['file'])[0] + '.ini'
-    checksum = md5file(meta['file'])
-    ini = ConfigParser()
-
-    if os.path.isfile(ini_file):
-        ini.read(ini_file)
-        try:
-            if ini['info']['checksum'] == checksum:
-                return
-        except KeyError:
-            logger.error('Corrupted ini file')
-
-    ini['info'] = {'checksum': checksum, 'name': meta['name']}
-    ini['events'] = {}
-
-    for i, block in enumerate(get_blocks(meta['file'])):
-        bytes_out = BytesIO()
-        block.save(bytes_out, format='PNG')
-        bytes_out.seek(0)
-        bfile = bytes_out.getvalue()
-        bytes_out.close()
-        ini['events']['e{}'.format(i)] = get_text(bfile)
-
-    with open(ini_file, 'w') as f:
-        ini.write(f)
+def get_roadmap():
+    result = requests.get(config['core']['roadmap_url'])
+    result.raise_for_status()
+    return result.json()['data']
 
 
-def mkschedule(ics_dir='', img_dir=''):
-    images = get_images(img_dir=img_dir)
-    for meta in images:
-        update_image_data(meta)
+def last_day_of_month(any_day):
+    next_month = any_day.replace(day=28) + timedelta(days=4)
+    return next_month - timedelta(days=next_month.day)
 
-    events = {}
-    for fname in os.listdir(img_dir):
-        prefix, ext = os.path.splitext(fname)
-        if ext != '.ini':
-            continue
 
-        ini = ConfigParser()
-        ini.read(os.path.join(img_dir, prefix + '.ini'))
-        try:
-            name = ini['info']['name']
-            events[name] = []
-            for e in ini['events']:
-                events[name].append(ini['events'][e])
-        except KeyError as e:
-            logger.error('Corrupted ini file')
+def get_date_from_quarter(date_str):
+    """
+    Parse a string containing a date in quarter notation and extract a date. The date extracted is the end of the
+    quarter. If mid is present, the date will be half of the middle month of the quarter.
 
-    create_ics(events, ics_dir)
+    :param date_str: string matching one of the following: 'Q1 2019' or 'Mid Q4 2018' or 'Start of Q3 2018'.
+    :return: date as datetime object
+    """
+    date_array = date_str.split(' ')
+    year = int(date_array[-1])
+
+    if len(date_array) > 2:
+        if date_array[0] == 'Mid':
+            q = date_array[1]
+        else:
+            q = date_array[2]
+    else:
+        q = date_array[0]
+
+    if q == 'Q1':
+        month = 3
+    elif q == 'Q2':
+        month = 6
+    elif q == 'Q3':
+        month = 9
+    elif q == 'Q4':
+        month = 12
+    else:
+        month = 1
+
+    date_object = None
+    if date_array[0] == 'Mid':
+        date_object = datetime(year, month - 1, 15, 0, 0)
+    elif date_array[0] == 'Start' and date_array[1] == 'of':
+        date_object = datetime(year, month - 2, 15, 0, 0)
+    else:
+        date_object = last_day_of_month(datetime(year, month, 1, 0, 0))
+    return date_object
+
+
+def generate_description(cards):
+    description = "Patch note:\n"
+    for card in cards:
+        description += "- %s: %s\n" % (card['name'], card['description'])
+    return description
+
+
+def parse_roadmap(roadmap):
+    events = []
+    for release in roadmap['releases']:
+        event = Event()
+        if release['released']:
+            begin_date = datetime.strptime(release['description'].split(' ', 1)[1], '%B %d, %Y')
+        else:
+            begin_date = get_date_from_quarter(release['description'])
+        event.begin = begin_date
+        event.make_all_day()
+        event.name = 'Star Citizen %s release' % release['name']
+        event.description = generate_description(release['cards'])
+        events.append(event)
+    return events
+
+
+def create_ics(events):
+    calendar = Calendar()
+    calendar.events = events
+    with open(config['core']['ics_output'], 'w') as ics_file:
+        ics_file.writelines(calendar)
+    return 0
+
+
+def mkschedule():
+    logger.info('Start mkschedule')
+    return_code = 0
+    try:
+        roadmap = get_roadmap()
+    except requests.HTTPError as e:
+        logger.error('Error while downloading the roadmap: %s', e)
+    except ValueError as e:
+        logger.error('Error while extracting the roadmap: %s', e)
+    except KeyError as e:
+        logger.error('Error while reading the roadmap: %s', e)
+
+    events = parse_roadmap(roadmap)
+    return_code = create_ics(events)
+    logger.info('End mkschedule')
+    return return_code
 
 
 if __name__ == '__main__':
-    argc = len(sys.argv)
-    if argc >= 3:
-        kw = {'level': logging.INFO, 'format': CORE['logging_format']}
-        if argc >= 4:
-            kw['filename'] = sys.argv[3]
-        logging.basicConfig(**kw)
-
-        logger.info('Start mkschedule')
-        mkschedule(ics_dir=sys.argv[1], img_dir=sys.argv[2])
-        logger.info('End mkschedule')
-    else:
-        print('Usage: {} ICS_DIR IMG_DIR [LOG_FILE]'.format(sys.argv[0]))
+    load_config('config.cfg')
+    mkschedule()

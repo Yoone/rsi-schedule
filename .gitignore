@@ -1,4 +1,3 @@
 *.log
 *.swp
 __pycache__/
-images/
