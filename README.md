@@ -4,9 +4,9 @@ rsi-schedule
 Introduction
 ------------
 
-Cloud Imperium Games released their [roadmap](hhttps://robertsspaceindustries.com/roadmap/board/1-Star-Citizen) for Star
-Citizen. I thought it would be useful to access it from calendars such as Google Calendar, Apple Calendar, Yahoo! 
-Calendar, Microsoft Outlook, and many others.
+Cloud Imperium Games released their [roadmap](https://robertsspaceindustries.com/roadmap/board/1-Star-Citizen) for Star
+Citizen. You can now access it from calendars such as Google Calendar, Apple Calendar, Yahoo! Calendar, Microsoft 
+Outlook, and many others.
 
 This project consists in crawling the API from the public roadmap web page and parse it to generate an iCalendar file
 (RFC 5545).
@@ -22,7 +22,11 @@ Usage
 
 ```
 pipenv install
-pipenv shell
-cd src
-./schedule.py
+pipenv run rsi_schedule/schedule.py --config config.cfg
 ```
+
+Contributors
+------------
+
+* [Yoone](https://github.com/yoone): Creator of the project
+* [Chafouin](https://github.com/chafouin): Revamped project to use the roadmap API

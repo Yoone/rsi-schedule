@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import argparse
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 import logging
-import os
+import sys
 
 from ics import Calendar, Event
 import requests
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 config = ConfigParser()
 
 
 def load_config(config_file):
-    config.read(os.path.join(os.path.dirname(__file__), config_file))
+    config.read(config_file)
 
 
 def get_roadmap():
+    logger.info('Get roadmap from %s', config['core']['roadmap_url'])
     result = requests.get(config['core']['roadmap_url'])
     result.raise_for_status()
     return result.json()['data']
@@ -77,6 +81,7 @@ def generate_description(cards):
 
 
 def parse_roadmap(roadmap):
+    logger.info('Parse roadmap')
     events = []
     for release in roadmap['releases']:
         event = Event()
@@ -93,31 +98,35 @@ def parse_roadmap(roadmap):
 
 
 def create_ics(events):
+    logger.info('Create ics file: %s', config['core']['ics_output'])
     calendar = Calendar()
     calendar.events = events
     with open(config['core']['ics_output'], 'w') as ics_file:
         ics_file.writelines(calendar)
-    return 0
 
 
 def mkschedule():
-    logger.info('Start mkschedule')
-    return_code = 0
     try:
         roadmap = get_roadmap()
     except requests.HTTPError as e:
         logger.error('Error while downloading the roadmap: %s', e)
+        return
     except ValueError as e:
         logger.error('Error while extracting the roadmap: %s', e)
+        return
     except KeyError as e:
         logger.error('Error while reading the roadmap: %s', e)
+        return
 
     events = parse_roadmap(roadmap)
-    return_code = create_ics(events)
-    logger.info('End mkschedule')
-    return return_code
+    create_ics(events)
 
 
 if __name__ == '__main__':
-    load_config('config.cfg')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", help="configuration file", type=str, dest="config_file", required=True)
+    args = parser.parse_args()
+    load_config(args.config_file)
+    logger.info('Starting rsi-schedule')
     mkschedule()
+    logger.info('End rsi-schedule')
